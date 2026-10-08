@@ -1,0 +1,1060 @@
+/* ==========================================================================
+   DraculaFin – Dracula-Theme für Jellyfin 10.11+
+   Version: Mystic Premium
+
+   Einfügen unter: Dashboard → Allgemein → Eigenes CSS
+   Optional dazu: draculafin-fx.js über das Plugin "JavaScript Injector"
+
+   Design-Philosophie:
+   - Mystisch: Tiefe, Film-Korn, Vignette, Nebel, schwebende Karten
+   - Premium: Glassmorphismus, butterweiche Animationen, haptisches Feedback
+   - 100 % Dracula: Es werden ausschließlich die offiziellen
+     Dracula-Farben (draculatheme.com) verwendet – keine Fremdfarben.
+   - Der Videoplayer wird bewusst NICHT verändert.
+   ========================================================================== */
+
+@import url("https://cdn.jsdelivr.net/gh/prayag17/Jellyfin-Icons/round.css");
+@import url("https://fonts.googleapis.com/css2?family=Monoton&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap");
+
+
+/* ==========================================================================
+   1. DESIGN-TOKENS – ausschließlich offizielle Dracula-Palette
+   ========================================================================== */
+:root {
+    /* --- Offizielle Dracula-Palette (draculatheme.com) --- */
+    --bg: 40 42 54;              /* #282a36 Background   */
+    --bgDark: 33 34 44;          /* #21222c dunkler       */
+    --bgDarker: 25 26 33;        /* #191a21 noch dunkler  */
+    --currentLine: 68 71 90;     /* #44475a Selection     */
+    --fg: 248 248 242;           /* #f8f8f2 Foreground    */
+    --comment: 98 114 164;       /* #6272a4 Comment       */
+    --cyan: 139 233 253;         /* #8be9fd */
+    --green: 80 250 123;         /* #50fa7b */
+    --orange: 255 184 108;       /* #ffb86c */
+    --pink: 255 121 198;         /* #ff79c6 */
+    --purple: 189 147 249;       /* #bd93f9 */
+    --red: 255 85 85;            /* #ff5555 */
+    --yellow: 241 250 140;       /* #f1fa8c */
+
+    /* --- Schriften --- */
+    --fontDisplay: Monoton, "JetBrains Mono", monospace;
+    --fontBody: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+    --fontUi: Inter, "JetBrains Mono", ui-monospace, sans-serif;
+
+    /* --- Posterfarben (das JS überschreibt diese pro Karte) --- */
+    --posterTop: var(--purple);
+    --posterBottom: var(--pink);
+
+    /* --- Detailseite: ebenfalls vom JS aus dem Backdrop berechnet --- */
+    --detailA: var(--purple);
+    --detailB: var(--pink);
+
+    /* --- Lichteffekte: bewusst dezent, damit das Bild frei atmen kann --- */
+    --ambientIdle: .28;
+    --ambientHover: .55;
+    --ambientBlur: 26px;
+
+    /* --- Formen & Bewegung --- */
+    --radiusS: .5em;
+    --radiusM: 1em;
+    --radiusL: 1.5em;
+    --easeSpring: cubic-bezier(.22, 1, .36, 1); /* ohne Überschwinger = kein Wackeln */
+    --easeSmooth: cubic-bezier(.22, 1, .36, 1);
+    --easeOutExpo: cubic-bezier(.16, 1, .3, 1);
+    --speedFast: 180ms;
+    --speedMedium: 350ms;
+
+    /* --- Layout --- */
+    --cardGap: clamp(.8em, 1.6vw, 1.4em);
+    --portraitColumns: 3;
+    --backdropColumns: 1;
+
+    /* --- Premium-Effekte --- */
+    --glassBlur: 20px;
+    --glassSaturation: 180%;
+    --cardDepth: 0 8px 32px -8px rgb(0 0 0 / .45);
+    --shadowDepth: 0 25px 50px -12px rgb(0 0 0 / .55);
+}
+
+
+/* ==========================================================================
+   2. GRUNDLAGE: Schrift, Hintergrund, Film-Korn
+   ========================================================================== */
+html {
+    font-family: var(--fontBody);
+    font-size: clamp(13px, 0.8rem + 0.25vw, 16px);
+    color: rgb(var(--fg));
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+/* Hintergrund: Dracula-Grau mit drei weichen Dracula-Lichtquellen für Tiefe */
+html,
+.backgroundContainer,
+.nowPlayingPlaylist,
+.nowPlayingContextMenu {
+    background:
+        radial-gradient(ellipse 80% 50% at 20% 0%, rgb(var(--purple) / .16), transparent 50%),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgb(var(--pink) / .11), transparent 55%),
+        radial-gradient(ellipse 45% 35% at 55% 55%, rgb(var(--comment) / .08), transparent 60%),
+        linear-gradient(180deg, rgb(var(--bg)), rgb(var(--bgDark)) 55%, rgb(var(--bgDarker)));
+    background-attachment: fixed;
+}
+
+/* Wenn Jellyfin Backdrop-Bilder zeigt: halbtransparente Dracula-Schicht darüber */
+.backgroundContainer.withBackdrop {
+    background:
+        radial-gradient(ellipse 80% 50% at 20% 0%, rgb(var(--detailA) / .14), transparent 60%),
+        linear-gradient(180deg, rgb(var(--bgDark) / .85), rgb(var(--bgDarker) / .92));
+    background-attachment: fixed;
+}
+
+/* Film-Korn: dezentes Analog-Rauschen für den mystischen Look */
+.backgroundContainer::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    opacity: .035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    pointer-events: none;
+}
+
+::selection {
+    background: rgb(var(--pink) / .5);
+    color: rgb(var(--fg));
+    text-shadow: 0 0 8px rgb(var(--pink) / .6);
+}
+
+/* Scrollbar im Dracula-Stil */
+html {
+    scrollbar-color: rgb(var(--currentLine)) transparent;
+}
+
+::-webkit-scrollbar { width: .55em; height: .55em; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background: rgb(var(--currentLine));
+    border-radius: 100vmax;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--purple) / .8);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+
+/* ==========================================================================
+   3. TYPOGRAFIE – Mystisch & Premium
+   ========================================================================== */
+h1, h2, h3,
+.pageTitle,
+.sectionTitle {
+    font-family: var(--fontBody);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+/* Abschnittsüberschriften: Pink mit atmendem Neon-Hof */
+.sectionTitle,
+.sectionTitle-cards,
+h2 {
+    color: rgb(var(--pink));
+    font-size: clamp(1.1em, 1.6vw, 1.35em);
+    text-shadow:
+        0 0 10px rgb(var(--pink) / .5),
+        0 0 30px rgb(var(--pink) / .25);
+    animation: titleGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes titleGlow {
+    from { text-shadow: 0 0 10px rgb(var(--pink) / .5), 0 0 30px rgb(var(--pink) / .25); }
+    to   { text-shadow: 0 0 15px rgb(var(--pink) / .7), 0 0 45px rgb(var(--pink) / .4); }
+}
+
+.cardText {
+    font-size: .88em;
+    line-height: 1.5;
+}
+
+.cardText-first {
+    color: rgb(var(--fg));
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+/* Sekundäre Zeilen in Kommentar-Farbe wie im Editor */
+.cardText:not(.cardText-first) {
+    color: rgb(var(--comment));
+}
+
+.detail-clamp-text,
+.overview-text {
+    line-height: 1.75;
+    max-width: 72ch;
+    color: rgb(var(--fg) / .92);
+    font-family: var(--fontUi);
+    font-size: .95em;
+}
+
+
+/* ==========================================================================
+   4. GLAS-FLÄCHEN: Header, Seitenmenü, Dialoge – Premium Glassmorphismus
+   ========================================================================== */
+.skinHeader-blurred:not(.osdHeader),
+.MuiAppBar-root {
+    background-color: rgb(var(--bgDark) / .65) !important;
+    backdrop-filter: blur(var(--glassBlur)) saturate(var(--glassSaturation)) !important;
+    -webkit-backdrop-filter: blur(var(--glassBlur)) saturate(var(--glassSaturation)) !important;
+}
+
+/* Neon-Linie unter dem Header (verstärkt sich leicht beim Überfahren) */
+.skinHeader:not(.osdHeader),
+.MuiAppBar-root {
+    box-shadow:
+        0 1px 0 rgb(var(--purple) / .4),
+        0 8px 32px -16px rgb(var(--purple) / .6),
+        0 2px 8px -2px rgb(var(--pink) / .2);
+    transition: transform var(--speedMedium) var(--easeSmooth), box-shadow var(--speedMedium);
+}
+
+.skinHeader:not(.osdHeader):hover,
+.MuiAppBar-root:hover {
+    box-shadow:
+        0 1px 0 rgb(var(--purple) / .6),
+        0 12px 40px -16px rgb(var(--purple) / .8),
+        0 4px 12px -2px rgb(var(--pink) / .35);
+}
+
+.headroom--unpinned {
+    transform: translateY(-3.5em);
+}
+
+.mainDrawer,
+.drawer-open,
+.MuiDrawer-paper {
+    background: rgb(var(--bgDarker) / .88);
+    border-right: 1px solid rgb(var(--currentLine) / .6);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+}
+
+/* Premium-Dialoge mit tiefer Schattenwirkung */
+.dialog {
+    background: rgb(var(--bgDark) / .94);
+    border: 1px solid rgb(var(--currentLine) / .5);
+    border-radius: var(--radiusL) !important;
+    box-shadow:
+        var(--shadowDepth),
+        inset 0 1px 0 rgb(var(--fg) / .05);
+    backdrop-filter: blur(20px);
+}
+
+.formDialogHeader:not(.formDialogHeader-clear),
+.formDialogFooter:not(.formDialogFooter-clear),
+.collapseContent {
+    background-color: rgb(var(--bgDark) / .82);
+    backdrop-filter: blur(12px);
+}
+
+.visualCardBox,
+.paperList {
+    background: rgb(var(--bgDark) / .65) !important;
+    border: 1px solid rgb(var(--currentLine) / .4) !important;
+    border-radius: var(--radiusM) !important;
+    box-shadow: var(--cardDepth) !important;
+    backdrop-filter: blur(12px);
+}
+
+
+/* ==========================================================================
+   5. LAYOUT: Responsives Karten-Raster
+   ========================================================================== */
+.itemsContainer,
+.vertical-list {
+    gap: var(--cardGap);
+    /* Kein padding hier: Jellyfin misst die Containerbreite per JS.
+       Eigenes Padding verfälscht die Kartenbreiten → verzogene Bilder. */
+}
+
+.vertical-wrap {
+    justify-content: flex-start !important;
+}
+
+.portraitCard,
+.squareCard {
+    width: calc(100% / var(--portraitColumns) - var(--cardGap)) !important;
+}
+
+.backdropCard,
+.smallBackdropCard,
+.overflowBackdropCard {
+    width: calc(100% / var(--backdropColumns) - var(--cardGap)) !important;
+}
+
+@media (min-width: 25em)    { :root { --backdropColumns: 2; } }
+@media (min-width: 43.75em) { :root { --portraitColumns: 4; } }
+@media (min-width: 48em)    { :root { --backdropColumns: 3; } }
+@media (min-width: 62em)    { :root { --portraitColumns: 5; } }
+@media (min-width: 80em)    { :root { --portraitColumns: 6; --backdropColumns: 4; } }
+@media (min-width: 100em)   { :root { --portraitColumns: 8; --backdropColumns: 5; } }
+@media (min-width: 140em)   { :root { --portraitColumns: 10; --backdropColumns: 6; } }
+
+/* Horizontale Reihen: Platz für den Glow schaffen */
+.scrollSlider {
+    padding-block: 2em;
+}
+
+
+/* ==========================================================================
+   6. KARTEN – Glow + Spotlight + 3D-Tilt + Erscheinungs-Animation
+   ========================================================================== */
+.card,
+.cardBox,
+.cardScalable {
+    overflow: visible !important;
+    contain: none !important;
+}
+
+.cardScalable {
+    position: relative;
+    isolation: isolate;
+    border-radius: var(--radiusM);
+    transition:
+        transform var(--speedMedium) var(--easeSpring),
+        box-shadow var(--speedMedium) var(--easeSmooth);
+    /* Mystisches Erscheinen beim Reinladen; --stagger setzt das JS */
+    animation: cardMaterialize .5s var(--easeOutExpo) backwards;
+    will-change: transform;
+    backface-visibility: hidden;
+    animation-delay: calc(var(--stagger, 0) * 55ms);
+}
+
+@keyframes cardMaterialize {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.cardImageContainer,
+.cardPadder,
+.cardOverlayContainer,
+.defaultCardBackground {
+    border-radius: var(--radiusM) !important;
+}
+
+.cardImageContainer {
+    box-shadow:
+        inset 0 0 0 1px rgb(var(--fg) / .08),
+        var(--cardDepth);
+    transition: box-shadow var(--speedMedium);
+}
+
+/* Personen/Besetzung: Jellyfin macht daraus Ovale (50 % !important) –
+   hier wieder Rechtecke mit runden Ecken, passend zu den Postern.
+   Erhöhte Spezifität (html body ...), damit es sicher gewinnt. */
+html body .card.personCard .cardScalable,
+html body .card.personCard .cardBox,
+html body .card.personCard .cardContent,
+html body .card.personCard .cardImageContainer,
+html body .card.personCard .cardImage,
+html body .card.personCard .cardImageContainer img,
+html body .card.personCard .defaultCardBackground,
+html body .card.personCard .cardPadder,
+html body .card.personCard .cardOverlayContainer,
+html body .card.personCard .cardOverlayButton-hover {
+    border-radius: var(--radiusM) !important;
+}
+
+html body .card.personCard .cardImageContainer {
+    background-size: cover !important;
+    background-position: center top !important;
+}
+
+/* AMBIENT GLOW: Posterfarben hinter der Karte */
+.cardScalable::before {
+    content: "";
+    position: absolute;
+    inset: 8% 5%;
+    z-index: -1;
+    border-radius: inherit;
+    background: linear-gradient(160deg, rgb(var(--posterTop)), rgb(var(--posterBottom)));
+    filter: blur(var(--ambientBlur)) saturate(150%);
+    opacity: var(--ambientIdle);
+    transform: scale(.94) translateY(4px);
+    transition:
+        opacity var(--speedMedium) var(--easeSmooth),
+        transform var(--speedMedium) var(--easeSmooth),
+        filter var(--speedMedium);
+    pointer-events: none;
+}
+
+/* SPOTLIGHT: Lichtfleck, der der Maus folgt (--mx/--my vom JS) */
+.cardScalable::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    border-radius: inherit;
+    background: radial-gradient(
+        ellipse 80% 60% at var(--mx, 50%) var(--my, 0%),
+        rgb(255 255 255 / .26),
+        rgb(var(--posterTop) / .12) 40%,
+        transparent 70%
+    );
+    mix-blend-mode: overlay;
+    opacity: 0;
+    transition: opacity var(--speedFast);
+    pointer-events: none;
+}
+
+/* Hover: Karte hebt sich nur leicht – bewusst KEIN Drehen/Neigen,
+   damit das Poster immer ruhig und unverzerrt bleibt */
+@media (hover: hover) {
+    .card:hover .cardScalable {
+        transform: translateY(-5px) scale(1.02);
+        z-index: 10;
+    }
+
+    /* Premium: feiner Dracula-Verlaufsrahmen + Glanzstreifen beim Hover */
+    .card:hover .cardImageContainer {
+        outline: 1px solid rgb(var(--purple) / .55);
+        outline-offset: -1px;
+    }
+
+    .card:hover .cardScalable::after {
+        background:
+            linear-gradient(115deg, transparent 35%, rgb(var(--fg) / .10) 50%, transparent 65%),
+            radial-gradient(ellipse 80% 60% at var(--mx, 50%) var(--my, 0%),
+                rgb(255 255 255 / .18), rgb(var(--posterTop) / .10) 40%, transparent 70%);
+    }
+
+    .card:hover .cardScalable::before {
+        opacity: var(--ambientHover);
+        transform: scale(1.06) translateY(6px);
+        filter: blur(calc(var(--ambientBlur) * 1.2)) saturate(160%);
+    }
+
+    .card:hover .cardScalable::after {
+        opacity: 1;
+    }
+
+    .card:hover .cardImageContainer {
+        box-shadow:
+            inset 0 0 0 1px rgb(var(--fg) / .12),
+            0 16px 40px -12px rgb(var(--posterTop) / .3),
+            0 6px 20px -8px rgb(var(--posterBottom) / .22);
+    }
+}
+
+/* Fokus per Tastatur/Fernbedienung */
+.card:focus-visible .cardScalable,
+.card.show-focus:focus .cardScalable {
+    transform: scale(1.05);
+    z-index: 10;
+}
+
+.card:focus-visible .cardScalable::before,
+.card.show-focus:focus .cardScalable::before {
+    opacity: var(--ambientHover);
+    transform: scale(1.1);
+}
+
+.card:focus-visible .cardImageContainer,
+.card.show-focus:focus .cardImageContainer {
+    box-shadow:
+        0 0 0 2px rgb(var(--pink)),
+        0 0 24px rgb(var(--pink) / .7),
+        0 0 48px rgb(var(--pink) / .4);
+}
+
+.card:active .cardScalable {
+    transform: scale(.96);
+    transition-duration: 80ms;
+}
+
+.cardOverlayContainer {
+    background: linear-gradient(
+        0deg,
+        rgb(var(--bgDarker) / .85) 0%,
+        rgb(var(--bgDarker) / .4) 40%,
+        transparent 70%
+    );
+}
+
+.cardOverlayButton,
+.cardOverlayContainer > .cardOverlayFab-primary {
+    display: none;
+}
+
+.defaultCardBackground {
+    background: linear-gradient(160deg, rgb(var(--currentLine)), rgb(var(--bgDark))) !important;
+}
+
+/* Darsteller rund */
+.personCard .cardImageContainer,
+.personCard .cardPadder {
+    border-radius: 50% !important;
+}
+
+
+/* ==========================================================================
+   7. INDIKATOREN & FORTSCHRITT – Premium-Look
+   ========================================================================== */
+.countIndicator,
+.fullSyncIndicator,
+.mediaSourceIndicator {
+    background: rgb(var(--purple));
+    color: rgb(var(--bgDarker));
+    font-weight: 700;
+    box-shadow: 0 0 12px rgb(var(--purple) / .5);
+}
+
+.playedIndicator {
+    background: rgb(var(--green));
+    color: rgb(var(--bgDarker));
+    box-shadow: 0 0 16px rgb(var(--green) / .7);
+}
+
+.indicator {
+    border-radius: 100vmax;
+    backdrop-filter: blur(4px);
+}
+
+.itemProgressBar {
+    height: .3em;
+    background-color: rgb(var(--currentLine) / .5) !important;
+    border-radius: 100vmax;
+    overflow: hidden;
+    box-shadow: inset 0 1px 3px rgb(0 0 0 / .35);
+}
+
+/* Fortschritt: Dracula-Verlauf mit langsam wanderndem Schimmer */
+.itemProgressBarForeground {
+    background: linear-gradient(90deg, rgb(var(--purple)), rgb(var(--pink)), rgb(var(--cyan)));
+    background-size: 200% 100%;
+    border-radius: 100vmax;
+    box-shadow: 0 0 12px rgb(var(--pink) / .75);
+    animation: progressShimmer 3s ease-in-out infinite;
+}
+
+@keyframes progressShimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+.playstatebutton-icon-played {
+    color: rgb(var(--green));
+    filter: drop-shadow(0 0 6px rgb(var(--green) / .6));
+}
+
+/* Hinweis: Die Zeitleiste des Videoplayers (.mdl-slider …) wird
+   bewusst NICHT gestylt – am Playback ändert dieses Theme nichts. */
+
+
+/* ==========================================================================
+   8. BUTTONS – Premium mit haptischem Feedback
+   ========================================================================== */
+.detailButton,
+.emby-button.block,
+.dashboardActionsContainer > .emby-button {
+    color: rgb(var(--fg));
+    background: rgb(var(--currentLine) / .35);
+    border: 1px solid rgb(var(--currentLine) / .6);
+    border-radius: var(--radiusS);
+    font-family: var(--fontUi);
+    font-weight: 500;
+    letter-spacing: .01em;
+    transition:
+        transform var(--speedFast) var(--easeSpring),
+        background-color var(--speedFast),
+        border-color var(--speedFast),
+        box-shadow var(--speedMedium),
+        filter var(--speedFast);
+    backdrop-filter: blur(8px);
+}
+
+.detailButton {
+    padding: .6em .9em !important;
+    margin: .2em !important;
+}
+
+@media (hover: hover) {
+    .detailButton:hover,
+    .emby-button.block:hover {
+        background: rgb(var(--currentLine) / .7);
+        border-color: rgb(var(--purple) / .7);
+        box-shadow:
+            0 0 0 1px rgb(var(--purple) / .4),
+            0 4px 20px -4px rgb(var(--purple) / .4),
+            0 0 20px rgb(var(--purple) / .2);
+        transform: translateY(-2px);
+        filter: brightness(1.1);
+    }
+}
+
+.detailButton:active,
+.emby-button:active {
+    transform: scale(.94) translateY(1px);
+    transition-duration: 60ms;
+}
+
+/* Play = Hauptaktion in Neon-Pink-Verlauf mit Glow */
+.btnPlay,
+.button-submit {
+    background: linear-gradient(135deg, rgb(var(--pink)), rgb(var(--purple))) !important;
+    color: rgb(var(--bgDarker)) !important;
+    border: none !important;
+    font-weight: 700;
+    letter-spacing: .02em;
+    box-shadow:
+        0 0 24px -4px rgb(var(--pink) / .7),
+        0 4px 16px -4px rgb(var(--purple) / .5),
+        inset 0 1px 0 rgb(255 255 255 / .2);
+    transition:
+        transform var(--speedFast) var(--easeSpring),
+        box-shadow var(--speedMedium),
+        filter var(--speedFast);
+}
+
+@media (hover: hover) {
+    .btnPlay:hover,
+    .button-submit:hover {
+        box-shadow:
+            0 0 32px -4px rgb(var(--pink) / .9),
+            0 8px 24px -4px rgb(var(--purple) / .7),
+            inset 0 1px 0 rgb(255 255 255 / .3);
+        transform: translateY(-2px) scale(1.02);
+        filter: brightness(1.15) saturate(1.1);
+    }
+}
+
+.btnPlay:active,
+.button-submit:active {
+    transform: scale(.95) translateY(1px);
+}
+
+.btnPlay > .detailButton-content {
+    display: flex;
+    align-items: center;
+    gap: .35em;
+}
+
+.btnPlay > .detailButton-content::after {
+    content: "Abspielen";
+    padding-left: .2em;
+}
+
+#btnDeleteImage,
+.button-delete {
+    background: rgb(var(--red)) !important;
+    color: rgb(var(--bgDarker)) !important;
+    box-shadow: 0 0 16px -4px rgb(var(--red) / .5);
+}
+
+.headerHomeButton,
+.headerSyncButton {
+    display: none;
+}
+
+
+/* ==========================================================================
+   9. FORMULARE
+   ========================================================================== */
+.emby-select-withcolor,
+.emby-select,
+.emby-input,
+.emby-textarea {
+    background-color: rgb(var(--bgDarker) / .8);
+    border: 1px solid rgb(var(--currentLine) / .5);
+    border-radius: var(--radiusS);
+    padding: .6em .8em !important;
+    font-family: var(--fontBody);
+    color: rgb(var(--fg));
+    transition:
+        border-color var(--speedFast),
+        box-shadow var(--speedFast),
+        background-color var(--speedFast);
+    backdrop-filter: blur(8px);
+}
+
+.emby-select:focus,
+.emby-input:focus,
+.emby-textarea:focus {
+    border-color: rgb(var(--purple));
+    background-color: rgb(var(--bgDarker));
+    box-shadow:
+        0 0 0 3px rgb(var(--purple) / .22),
+        0 0 20px -4px rgb(var(--purple) / .3);
+}
+
+.checkboxOutline {
+    border-radius: .35em;
+    transition: background-color var(--speedFast), box-shadow var(--speedFast);
+}
+
+.emby-checkbox:checked + span + .checkboxOutline {
+    background: rgb(var(--pink));
+    border-color: rgb(var(--pink));
+    box-shadow: 0 0 12px rgb(var(--pink) / .5);
+}
+
+.emby-checkbox:focus + span + .checkboxOutline {
+    box-shadow: 0 0 0 3px rgb(var(--pink) / .3);
+}
+
+.itemSelectionPanel {
+    border: unset;
+    background: transparent;
+}
+
+
+/* ==========================================================================
+   10. NAVIGATION
+   ========================================================================== */
+.navMenuOption {
+    margin: .35em 1em !important;
+    border-radius: var(--radiusS) !important;
+    font-family: var(--fontUi);
+    font-weight: 500;
+    transition:
+        background-color var(--speedFast),
+        transform var(--speedFast) var(--easeSpring),
+        color var(--speedFast),
+        box-shadow var(--speedFast);
+}
+
+@media (hover: hover) {
+    .navMenuOption:hover,
+    .listItem:hover {
+        background: rgb(var(--currentLine) / .5);
+        transform: translateX(4px);
+        color: rgb(var(--cyan));
+    }
+}
+
+/* Aktiver Menüpunkt: pinker Leuchtstreifen links */
+.navMenuOption-selected {
+    background: linear-gradient(90deg, rgb(var(--pink) / .25), rgb(var(--pink) / .05)) !important;
+    color: rgb(var(--pink)) !important;
+    box-shadow:
+        inset 3px 0 0 rgb(var(--pink)),
+        0 0 16px -4px rgb(var(--pink) / .3);
+    text-shadow: 0 0 8px rgb(var(--pink) / .5);
+}
+
+.listItem-border {
+    border-color: transparent !important;
+}
+
+.listItemImage {
+    border-radius: var(--radiusS);
+    box-shadow: 0 2px 8px -2px rgb(0 0 0 / .4);
+}
+
+
+/* ==========================================================================
+   11. DETAILSEITE – Mystisches Kino in Dracula-Farben
+   ========================================================================== */
+.detailLogo {
+    display: none;
+}
+
+/* Backdrop weich auslaufen lassen */
+.itemBackdrop {
+    height: clamp(42vh, 55vw, 68vh);
+    -webkit-mask-image: linear-gradient(180deg, black 30%, transparent 85%);
+    mask-image: linear-gradient(180deg, black 30%, transparent 85%);
+    filter: saturate(1.1) brightness(.9);
+}
+
+/* Jellyfin-Overlays transparent machen */
+.detailPageWrapperContainer,
+.detailPagePrimaryContainer,
+.detailPageSecondaryContainer,
+.detailPageContent,
+.nameContainer,
+.detailRibbon {
+    background: transparent !important;
+}
+
+/* Seitenhintergrund in den Dracula-Farben des Films (--detailA/B vom JS) */
+#itemDetailPage,
+.itemDetailPage {
+    background:
+        radial-gradient(ellipse 90% 60% at 10% 30%, rgb(var(--detailA) / .22), transparent 60%),
+        radial-gradient(ellipse 70% 50% at 90% 70%, rgb(var(--detailB) / .17), transparent 65%),
+        radial-gradient(ellipse 50% 40% at 50% 50%, rgb(var(--comment) / .08), transparent 70%) !important;
+    background-attachment: fixed !important;
+}
+
+/* Haupttitel als mystisches Neonschild */
+.nameContainer > :first-child,
+.detailPagePrimaryContainer h1 {
+    font-family: var(--fontDisplay);
+    font-weight: 400;
+    font-size: clamp(1.5em, 3vw, 2.8em);
+    line-height: 1.2;
+    letter-spacing: .03em;
+    color: rgb(var(--fg));
+    text-shadow:
+        0 0 4px rgb(var(--fg) / .8),
+        0 0 16px rgb(var(--detailA)),
+        0 0 36px rgb(var(--detailA) / .8),
+        0 0 64px rgb(var(--detailB) / .6),
+        0 0 96px rgb(var(--detailB) / .4);
+    animation: neonIgnite 1.6s steps(1, end) 1;
+}
+
+/* Episodenname/Untertitel in lesbarer Schrift */
+.nameContainer > :not(:first-child),
+.itemName.subtitle {
+    font-family: var(--fontBody);
+    font-weight: 700;
+    font-size: clamp(1em, 1.5vw, 1.35em);
+    letter-spacing: .02em;
+    color: rgb(var(--detailA));
+    text-shadow:
+        0 0 12px rgb(var(--detailA) / .6),
+        0 0 24px rgb(var(--detailA) / .3);
+    animation: none;
+}
+
+/* Titel nicht abschneiden ("Tru…"-Fix) */
+.nameContainer > *,
+.itemName {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+@keyframes neonIgnite {
+    0%, 10%, 18%, 30%, 42% { opacity: .15; text-shadow: none; filter: blur(2px); }
+    8%, 14%, 24%, 36%, 100% { opacity: 1; filter: blur(0); }
+}
+
+.itemMiscInfo,
+.itemMiscInfo-primary {
+    color: rgb(var(--comment));
+    align-items: flex-end !important;
+    font-family: var(--fontUi);
+}
+
+/* Altersfreigabe in Dracula-Orange */
+.mediaInfoOfficialRating {
+    padding: .2em .6em;
+    font-size: 75%;
+    font-weight: 600;
+    color: rgb(var(--orange));
+    background: rgb(var(--orange) / .08) !important;
+    border: 1px solid rgb(var(--orange) / .55);
+    border-radius: var(--radiusS);
+    box-shadow: 0 0 12px -2px rgb(var(--orange) / .35);
+    text-shadow: 0 0 6px rgb(var(--orange) / .45);
+}
+
+.starRatingContainer {
+    color: rgb(var(--yellow));
+    filter: drop-shadow(0 0 4px rgb(var(--yellow) / .5));
+}
+
+.tagline {
+    font-style: italic;
+    color: rgb(var(--cyan));
+    margin-bottom: 0;
+    text-shadow: 0 0 12px rgb(var(--cyan) / .3);
+    font-size: 1.05em;
+}
+
+.layout-mobile .mainDetailButtons {
+    margin-top: 2.5em;
+}
+
+.detailSection {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25em;
+    max-width: unset !important;
+}
+
+.detailSectionContent { order: 1; }
+.trackSelections      { order: 2; max-width: unset !important; }
+.itemDetailsGroup     { order: 3; }
+
+/* Infobox (Genres, Regie, …) im Look eines Editor-Panels */
+.itemDetailsGroup {
+    margin-top: 2em;
+    background: linear-gradient(160deg, rgb(var(--bgDark) / .85), rgb(var(--bgDarker) / .92));
+    border: 1px solid rgb(var(--currentLine) / .4);
+    border-left: 4px solid rgb(var(--detailA));
+    border-radius: var(--radiusM);
+    overflow: hidden;
+    box-shadow:
+        var(--cardDepth),
+        inset 0 1px 0 rgb(var(--fg) / .05);
+    backdrop-filter: blur(12px);
+}
+
+.itemDetailsGroup > div:not(:last-child) {
+    border-bottom: 1px solid rgb(var(--currentLine) / .4);
+}
+
+.detailsGroupItem {
+    margin: 0 !important;
+    padding: .7em 1.2em;
+    justify-content: space-between;
+    align-items: baseline;
+    max-width: unset !important;
+    transition: background-color var(--speedFast);
+}
+
+.detailsGroupItem:hover {
+    background: rgb(var(--currentLine) / .15);
+}
+
+.detailsGroupItem > .label {
+    color: rgb(var(--purple));
+    font-weight: 700;
+    flex-basis: 7em;
+    font-size: .9em;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+
+.detailsGroupItem > .content,
+.detailsGroupItem > .content > a {
+    text-align: end;
+    color: rgb(var(--fg) / .92);
+    font-family: var(--fontUi);
+}
+
+.detailsGroupItem > .content > a:hover {
+    color: rgb(var(--cyan));
+    text-shadow: 0 0 8px rgb(var(--cyan) / .4);
+}
+
+.itemTags {
+    display: none;
+}
+
+/* Poster auf der Detailseite: spürbarer, aber nicht flutender Glow */
+.detailImageContainer .cardScalable::before {
+    opacity: .6;
+    filter: blur(32px) saturate(150%);
+}
+
+.detailImageContainer .cardImageContainer {
+    box-shadow:
+        inset 0 0 0 1px rgb(var(--fg) / .1),
+        0 20px 50px -18px rgb(var(--detailA) / .35),
+        0 10px 28px -10px rgb(var(--detailB) / .25);
+}
+
+
+/* ==========================================================================
+   12. EFFEKTEBENEN (vom JS erzeugt) & BARRIEREFREIHEIT
+   ========================================================================== */
+
+/* Three.js-Canvas: Partikel, Sterne, Nebel */
+#draculaFxCanvas {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: .85;
+    transition: opacity .8s;
+}
+
+/* Film-Vignette: dunkelt die Ränder ab (Kino-Gefühl), nur Dracula-Dunkel */
+#draculaVignette {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    pointer-events: none;
+    background: radial-gradient(
+        ellipse 90% 85% at center,
+        transparent 62%,
+        rgb(var(--bgDarker) / .38) 100%
+    );
+    transition: opacity .8s;
+}
+
+/* Beim Videoschauen alle Effektebenen ausblenden – der Player bleibt
+   ansonsten komplett unangetastet (kein Styling, keine Skripte). */
+body:has(.videoPlayerContainer) #draculaFxCanvas,
+body:has(.videoPlayerContainer) #draculaVignette {
+    opacity: 0;
+}
+
+/* "Bewegung reduzieren" im System → keine Animationen */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .cardScalable {
+        animation: none;
+    }
+}
+
+.dashboardFooter::after {
+    content: "DraculaFin · Mystic";
+    font-size: .65em;
+    opacity: .4;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+
+
+/* ==========================================================================
+   13. EXTRAS: Loading-States, Tooltips, Toasts, Fokus
+   ========================================================================== */
+
+/* Skeleton-Schimmer für Karten ohne Bild (nur Dracula-Grauwerte) */
+@keyframes skeletonShimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.cardImageContainer:not(:has(img)):not(.blurhashed):not([style*="background-image"]) {
+    background: linear-gradient(
+        90deg,
+        rgb(var(--currentLine) / .3) 25%,
+        rgb(var(--currentLine) / .5) 50%,
+        rgb(var(--currentLine) / .3) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.5s ease-in-out infinite;
+}
+
+/* Tooltips */
+.jellyfin-tooltip {
+    background: rgb(var(--bgDarker) / .96) !important;
+    border: 1px solid rgb(var(--purple) / .4) !important;
+    border-radius: var(--radiusS) !important;
+    box-shadow: 0 8px 24px -8px rgb(0 0 0 / .55) !important;
+    backdrop-filter: blur(12px);
+    font-family: var(--fontUi) !important;
+}
+
+/* Toast-Benachrichtigungen */
+.toast {
+    background: rgb(var(--bgDark) / .94) !important;
+    border: 1px solid rgb(var(--purple) / .5) !important;
+    border-radius: var(--radiusM) !important;
+    box-shadow: 0 12px 32px -12px rgb(var(--purple) / .4) !important;
+    backdrop-filter: blur(16px);
+}
+
+/* Tastatur-Fokus sichtbar machen */
+*:focus-visible {
+    outline: 2px solid rgb(var(--pink));
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgb(var(--pink) / .2);
+}
